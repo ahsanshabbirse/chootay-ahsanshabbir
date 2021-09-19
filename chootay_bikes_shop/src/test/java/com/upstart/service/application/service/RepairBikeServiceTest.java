@@ -2,21 +2,24 @@ package com.upstart.service.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import com.upstart.service.application.constants.Constants;
 import com.upstart.service.application.entity.Customer;
 import com.upstart.service.application.entity.DailySaleReport;
 import com.upstart.service.application.entity.MonthlySaleReport;
-import com.upstart.service.application.entity.PurchaseReport;
 import com.upstart.service.application.entity.RepairBike;
 import com.upstart.service.application.entity.SparePart;
 import com.upstart.service.application.entity.SparePartToRepairBike;
@@ -24,9 +27,16 @@ import com.upstart.service.application.service.RepairBikeService;
 import com.upstart.service.application.service.SparePartService;
 import com.upstart.service.application.util.Utils;
 
-@DataJpaTest
+@RunWith(MockitoJUnitRunner.class)
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class RepairBikeServiceTest
 {
+
+	@MockBean
+	private RepairBikeService repairBikeService;
+
+	@MockBean
+	private SparePartService sparePartService;
 
 	private Customer getNewCustomer()
 	{
@@ -47,23 +57,14 @@ public class RepairBikeServiceTest
 		assertThat(result).isTrue();
 	}
 
-	private List<SparePart> getAvailableSpareParts()
+	private List<SparePart> getSpareParts()
 	{
-		SparePartService sparePartService = new SparePartService();
+		List<SparePart> spareParts = new ArrayList<SparePart>();
+		spareParts.add(new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE));
+		spareParts.add(new SparePart("tyre", 5, 500, Constants.SPARE_PART_STATUS_AVAILABLE));
+		spareParts.add(new SparePart("light", 20, 100, Constants.SPARE_PART_STATUS_AVAILABLE));
 
-		List<PurchaseReport> purchaseReports = new ArrayList<PurchaseReport>();
-
-		purchaseReports.add(new PurchaseReport(new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date()));
-		purchaseReports.add(new PurchaseReport(new SparePart("tyre", 5, 500, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date()));
-		purchaseReports.add(new PurchaseReport(new SparePart("light", 20, 100, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date()));
-		
-		for (PurchaseReport report : purchaseReports)
-		{
-			sparePartService.createNewSparePart(report);
-		}
-
-		List<SparePart> availableSpareParts = sparePartService.getAvailableSpareParts();
-		return availableSpareParts;
+		return spareParts;
 	}
 
 	@Test
@@ -75,22 +76,27 @@ public class RepairBikeServiceTest
 
 		assertThat(result).isTrue();
 	}
-	
+
 	@Test
 	void TestCreateRepairBike()
 	{
-		RepairBike repairedBike = createRepairBike();
+		RepairBike newBike = new RepairBike();
+
+		RepairBike bike = createRepairBike();
+
+		when(repairBikeService.createNewRepairBike(newBike)).thenReturn(bike);
+
+		RepairBike repairedBike = repairBikeService.createNewRepairBike(newBike);
 
 		assertThat(repairedBike.getId()).isNotNull();
 	}
 
 	private RepairBike createRepairBike()
 	{
-		RepairBikeService repairBikeService = new RepairBikeService();
 
 		Set<SparePartToRepairBike> partToRepairBikes = new HashSet<SparePartToRepairBike>();
 
-		List<SparePart> availableSpareParts = getAvailableSpareParts();
+		List<SparePart> availableSpareParts = getSpareParts();
 
 		for (SparePart part : availableSpareParts)
 		{
@@ -98,54 +104,58 @@ public class RepairBikeServiceTest
 			partToRepairBike.setSparePart(part);
 			partToRepairBikes.add(partToRepairBike);
 		}
-		
+
 		RepairBike repairBike = new RepairBike();
+		repairBike.setId(1);
 		repairBike.setPlateNumber("ABC 123");
 
 		repairBike.setSparePartToRepairBikes(partToRepairBikes);
-
-		RepairBike repairedBike = repairBikeService.createNewRepairBike(repairBike);
-		return repairedBike;
+		return repairBike;
 	}
-	
+
 	@Test
 	void TestCreateSaleOnRepairBike()
 	{
-		RepairBike updatedBike = createSaleOnRepairedBike();
-		
+		RepairBike newBike = new RepairBike();
+
+		RepairBike bike = createSaleOnRepairedBike();
+		Customer customer = getNewCustomer();
+
+		when(repairBikeService.createSaleForRepairedBike(customer, newBike)).thenReturn(bike);
+
+		RepairBike updatedBike = repairBikeService.createSaleForRepairedBike(customer, newBike);
+
 		assertThat(updatedBike.getId()).isNotNull();
 		assertTrue(updatedBike.getTotalAmount() >= 1000);
 	}
 
 	private RepairBike createSaleOnRepairedBike()
 	{
-		RepairBikeService repairBikeService = new RepairBikeService();
-		
+
 		RepairBike repairedBike = createRepairBike();
-		
+
 		repairedBike.setLabourAmount(1000.0);
-		
-		RepairBike updatedBike = repairBikeService.createSaleForRepairedBike(getNewCustomer(), repairedBike);
-		return updatedBike;
+		repairedBike.setTotalAmount(repairedBike.getLabourAmount());
+		return repairedBike;
 	}
-	
+
 	@Test
 	void TestCreateDailySalesInvoice()
 	{
 		SalesService salesService = new SalesService();
-		
-//		RepairBike updatedBike = createSaleOnRepairedBike();
-		
+
+		// RepairBike updatedBike = createSaleOnRepairedBike();
+
 		DailySaleReport dailySalesReport = salesService.createDailySalesReport();
 	}
-	
+
 	@Test
 	void TestCreateMonthlySalesInvoice()
 	{
 		SalesService salesService = new SalesService();
-		
-//		RepairBike updatedBike = createSaleOnRepairedBike();
-		
+
+		// RepairBike updatedBike = createSaleOnRepairedBike();
+
 		MonthlySaleReport monthlySaleReport = salesService.createMonthlySalesReport();
 	}
 }

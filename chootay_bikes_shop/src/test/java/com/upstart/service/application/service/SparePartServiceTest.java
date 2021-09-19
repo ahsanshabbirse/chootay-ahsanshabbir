@@ -2,13 +2,18 @@ package com.upstart.service.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import com.upstart.service.application.constants.Constants;
 import com.upstart.service.application.entity.PurchaseReport;
@@ -16,10 +21,14 @@ import com.upstart.service.application.entity.SparePart;
 import com.upstart.service.application.service.SparePartService;
 import com.upstart.service.application.util.Utils;
 
-@DataJpaTest
+@RunWith(MockitoJUnitRunner.class)
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class SparePartServiceTest
 {
 
+	@MockBean
+	private SparePartService sparePartService;
+	
 	@Test
 	void TestSparePartEntry()
 	{
@@ -33,29 +42,35 @@ public class SparePartServiceTest
 	}
 
 	@Test
-	void TestCreateSpareParts()
+	void TestCreateSparePartsPurchaseReport()
 	{
-		PurchaseReport purchaseReport = new PurchaseReport(new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date());
-
-		SparePartService sparePartService = new SparePartService();
-
+		PurchaseReport purchaseReport = getSparePartInPurchaseReport();
+		when(sparePartService.createNewSparePart(purchaseReport)).thenReturn(getSparePart());
+		
 		SparePart savedPart = sparePartService.createNewSparePart(purchaseReport);
 
-		assertEquals(purchaseReport.getSparePart(), savedPart);
+		assertEquals(getSparePart().getName(), savedPart.getName());
 	}
 
+	private PurchaseReport getSparePartInPurchaseReport()
+	{
+		return new PurchaseReport(getSparePart(), 10, 500, new Date());
+	}
+	
+	private SparePart getSparePart()
+	{
+		return new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE);
+	}
+	
 	@Test
 	void TestUpdateSpareParts()
 	{
-		PurchaseReport purchaseReport = new PurchaseReport(new SparePart("brakes", 0, 300, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date());
+		SparePart sparePart = new SparePart("brakes", 0, 300, Constants.SPARE_PART_STATUS_UNAVAILABLE);
+		SparePart updatedSparePart = new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE);
+		
+		when(sparePartService.updateSparePart(sparePart)).thenReturn(updatedSparePart);
 
-		SparePartService sparePartService = new SparePartService();
-
-		SparePart part = sparePartService.createNewSparePart(purchaseReport);
-
-		part.setQuantity(10);
-
-		SparePart updatedPart = sparePartService.updateSparePart(part);
+		SparePart updatedPart = sparePartService.updateSparePart(sparePart);
 
 		assertEquals(Constants.SPARE_PART_STATUS_AVAILABLE, updatedPart.getStatus());
 	}
@@ -63,15 +78,13 @@ public class SparePartServiceTest
 	@Test
 	void TestUpdateSparePartsWithNullId()
 	{
-		PurchaseReport purchaseReport = new PurchaseReport(new SparePart("brakes", 0, 300, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date());
-
-		SparePartService sparePartService = new SparePartService();
-
-		SparePart part = sparePartService.createNewSparePart(purchaseReport);
-
-		part.setId(null);
-
-		SparePart updatedPart = sparePartService.updateSparePart(part);
+		SparePart sparePart = new SparePart("brakes", 0, 300, Constants.SPARE_PART_STATUS_UNAVAILABLE);
+		sparePart.setId(1);
+//		SparePart updatedSparePart = new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE);
+		
+		when(sparePartService.updateSparePart(sparePart)).thenReturn(null);
+		
+		SparePart updatedPart = sparePartService.updateSparePart(sparePart);
 
 		assertThat(updatedPart).isNull();
 	}
@@ -79,25 +92,21 @@ public class SparePartServiceTest
 	@Test
 	void TestUpdateSparePartsWithEmptyName()
 	{
-		PurchaseReport purchaseReport = new PurchaseReport(new SparePart("brakes", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE), 10, 500, new Date());
-
-		SparePartService sparePartService = new SparePartService();
-
-		SparePart part = sparePartService.createNewSparePart(purchaseReport);
-
-		part.setName("");
-
-		SparePart updatedPart = sparePartService.updateSparePart(part);
+		SparePart sparePart = new SparePart("brakes", 0, 300, Constants.SPARE_PART_STATUS_UNAVAILABLE);
+		SparePart updatedSparePart = new SparePart("", 10, 300, Constants.SPARE_PART_STATUS_AVAILABLE);
+		
+		when(sparePartService.updateSparePart(sparePart)).thenReturn(updatedSparePart);
+		
+		SparePart updatedPart = sparePartService.updateSparePart(null);
 
 		assertThat(updatedPart).isNull();
-
-		// assertEquals(part, updatedPart);
-
 	}
 
 	@Test
 	void getAvailableSparePartsTest()
 	{
+		when(sparePartService.getAvailableSpareParts()).thenReturn(getAvailableSpareParts());
+		
 		List<SparePart> availableSpareParts = getAvailableSpareParts();
 
 		for (SparePart part : availableSpareParts)

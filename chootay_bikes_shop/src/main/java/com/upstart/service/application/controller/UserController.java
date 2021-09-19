@@ -36,7 +36,7 @@ public class UserController extends RestServiceController
 	 * @throws IOException
 	 */
 	@PostMapping(value = "/create_user")
-	private ResponseBean cerateNewUser(@Validated @RequestBody Data data) throws IOException
+	public ResponseBean cerateNewUser(@Validated @RequestBody Data data) throws IOException
 	{
 		log.info("---> Incoming Request: Going to create user entry");
 
@@ -68,7 +68,7 @@ public class UserController extends RestServiceController
 	 * @throws IOException
 	 */
 	@GetMapping(value = "/login")
-	private ResponseBean getUserSignIn(@RequestParam(required = true) String username, String password) throws IOException
+	public ResponseBean getUserSignIn(@RequestParam(required = true) String username, String password) throws IOException
 	{
 		log.info("---> Incoming Request: User sign in request with credentials msisdn: {} and password: {}", username, password);
 
@@ -94,7 +94,7 @@ public class UserController extends RestServiceController
 	 * @throws IOException
 	 */
 	@GetMapping(value = "/available_users")
-	private ResponseBean getAllUsers() throws IOException
+	public ResponseBean getAllUsers() throws IOException
 	{
 		log.info("---> Incoming Request: Provide available users");
 

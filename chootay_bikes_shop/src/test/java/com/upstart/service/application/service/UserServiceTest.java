@@ -1,22 +1,31 @@
 package com.upstart.service.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import com.upstart.service.application.constants.Constants;
 import com.upstart.service.application.entity.User;
 import com.upstart.service.application.service.UserService;
 import com.upstart.service.application.util.Utils;
 
-@DataJpaTest
+@RunWith(MockitoJUnitRunner.class)
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class UserServiceTest
 {
+	@MockBean
+	private UserService userService;
 
 	@Test
 	void TestUserEntryWithNull()
@@ -53,33 +62,38 @@ public class UserServiceTest
 
 		assertThat(result).isTrue();
 	}
-	
+
 	@Test
 	void getAvailableUser()
 	{
-		UserService userService = new UserService();
+		when(userService.getAvailableUsers()).thenReturn(getUsers());
 
 		List<User> availableUsers = userService.getAvailableUsers();
 
-		if (availableUsers == null)
-		{
-			assertThat(availableUsers).isNull();
-		}
+		assertNotNull(availableUsers);
 	}
 
 	@Test
 	void createUser()
 	{
-		List<User> users = getUsers();
+		when(userService.createUser(getUsers())).thenReturn(getUsers());
 
-		UserService userService = new UserService();
+		List<User> users = userService.createUser(getUsers());
 
-		users = userService.createUser(users);
+		assertThat(users).isNotNull();
+	}
 
-		if (users == null)
-		{
-			assertThat(users).isNull();
-		}
+	@Test
+	void signInUser()
+	{
+		String userName = "admin";
+		String password = "admin";
+		
+		when(userService.getUserSignIn(userName, password)).thenReturn(getUser(Constants.ADMIN_ROLE_TYPE.byteValue()));
+
+		User user = userService.getUserSignIn(userName, password);
+
+		assertEquals(user.getUserName(), userName);
 	}
 
 	private List<User> getUsers()
@@ -88,24 +102,18 @@ public class UserServiceTest
 
 		List<User> users = new ArrayList<User>();
 
+		User user = getUser(roleValue);
+		users.add(user);
+
+		return users;
+	}
+
+	private User getUser(byte roleValue)
+	{
 		User user = new User();
 		user.setUserName("admin");
 		user.setPassword("admin");
 		user.setRole(roleValue);
-		users.add(user);
-		
-		return users;
-	}
-
-	@Test
-	void signInUser()
-	{
-		UserService userService = new UserService();
-
-		userService.createUser(getUsers());
-
-		User user = userService.getUserSignIn("admin", "admin");
-
-		assertEquals(getUsers().get(0).getUserName(), user.getUserName());
+		return user;
 	}
 }
